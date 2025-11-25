@@ -1,0 +1,35 @@
+# This is a Databricks asset bundle definition for ott_cdc.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: ott_cdc
+  uuid: 97e8a6ac-639f-4ba8-a290-64bf51df2c1a
+
+artifacts:
+  python_artifact:
+    type: whl
+    build: uv build --wheel
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+targets:
+  dev:
+    # The default target uses 'mode: development' to create a development copy.
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default.
+    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-bb00fa3d-a981.cloud.databricks.com
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-bb00fa3d-a981.cloud.databricks.com
+      # We explicitly deploy to /Workspace/Users/shaik.apsar@hotmail.com to make sure we only have a single copy.
+      root_path: /Workspace/Users/shaik.apsar@hotmail.com/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: shaik.apsar@hotmail.com
+        level: CAN_MANAGE
