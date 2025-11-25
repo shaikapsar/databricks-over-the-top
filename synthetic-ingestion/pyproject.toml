@@ -1,0 +1,24 @@
+[project]
+name = "ott-analytics-ingestion"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "APSAR SHAIK", email = "shaik.apsar@outlook.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "confluent-kafka>=2.12.2",
+    "databricks-sdk>=0.73.0",
+    "databricks-sql-connector>=4.2.1",
+    "psycopg2-binary>=2.9.11",
+    "pyarrow>=22.0.0",
+    "python-dotenv>=1.2.1",
+]
+
+[project.scripts]
+ott-analytics-ingestion = "ott_analytics_ingestion:main"
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"

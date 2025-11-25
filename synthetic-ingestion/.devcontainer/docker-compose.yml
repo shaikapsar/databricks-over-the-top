@@ -1,0 +1,126 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspaces:cached
+    entrypoint: /usr/local/share/docker-init.sh
+    command: sleep infinity
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 2181:2181
+    healthcheck:
+      test: [ "CMD-SHELL", "echo stat | nc localhost 2181" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.3
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:13
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_DB: ott
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    command: [ "postgres", "-c", "wal_level=logical" ]
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      # Mount the local files into the expected paths within the container
+      - ./postgres-servers.json:/pgadmin4/servers.json
+      - ./pgpassfile:/pgadmin4/pgpassfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  debezium:
+    image: debezium/connect:3.0.0.Final
+    depends_on:
+      - kafka
+      - postgres
+    ports:
+      - 8083:8083
+    environment:
+      GROUP_ID: 1001
+      CONFIG_STORAGE_TOPIC: my_connect_configs
+      OFFSET_STORAGE_TOPIC: my_connect_offsets
+      STATUS_STORAGE_TOPIC: my_connect_statuses
+      BOOTSTRAP_SERVERS: kafka:9092
+      REST_ADVERTISED_HOST_NAME: debezium
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8083/connectors || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  init-connector:
+    image: curlimages/curl:latest
+    depends_on:
+      debezium:
+        condition: service_healthy
+    volumes:
+      - ./connector-config.json:/config/connector-config.json
+    command: [ "sh", "-c", "echo 'Waiting...'; sleep 5; echo 'Registering connector...'; curl -X POST -H 'Content-Type: application/json' --data @/config/connector-config.json http://debezium:8083/connectors; echo 'Complete.'" ]
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka
+      - debezium
+    ports:
+      - 8080:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://debezium:8083
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      AUTH_TYPE: LOGIN_FORM
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: admin
+
+volumes:
+  db_data:
+  pgadmin_data:
