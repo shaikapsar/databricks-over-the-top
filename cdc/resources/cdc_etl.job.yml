@@ -2,8 +2,11 @@
 
 resources:
   jobs:
-    sample_job:
-      name: sample_job
+    cdc_etl_job:
+      name: cdc_etl_job
+      
+      continuous:
+
 
       trigger:
         # Run this job every day, exactly one day from the last run; see https://docs.databricks.com/api/workspace/jobs/create#trigger
@@ -11,9 +14,9 @@ resources:
           interval: 1
           unit: DAYS
 
-      #email_notifications:
-      #  on_failure:
-      #    - your_email@example.com
+      email_notifications:
+        on_failure:
+          - shaik.apsar@hotmail.com
 
       parameters:
         - name: catalog
