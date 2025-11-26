@@ -6,13 +6,15 @@ resources:
       name: cdc_etl_job
       
       continuous:
+        pause_status: UNPAUSED
+        task_retry_mode: ON_FAILURE
 
 
-      trigger:
-        # Run this job every day, exactly one day from the last run; see https://docs.databricks.com/api/workspace/jobs/create#trigger
-        periodic:
-          interval: 1
-          unit: DAYS
+      #trigger:
+        # Run this job every day, exactly one day from the last run; see https://docs.databricks.com/api#/workspace/jobs/create#trigger
+      #  periodic:
+      #    interval: 1
+      #    unit: DAYS
 
       email_notifications:
         on_failure:

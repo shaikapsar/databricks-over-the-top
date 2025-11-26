@@ -30,6 +30,7 @@ def products_bronze_ingest_flow():
         .format("cloudFiles")
         .option("cloudFiles.format", "json")
         .option("cloudFiles.inferColumnTypes", "true")
-        .schema(product_schema)
+        .option("cloudFiles.allowSchemaEvolution", "true")
+        #.schema(product_schema)
         .load(product_raw_dir)
     )
