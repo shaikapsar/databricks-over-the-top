@@ -18,6 +18,9 @@ dev = [
     "databricks-connect>=15.4,<15.5",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/cdc_etl"]
+
 [project.scripts]
 main = "cdc.main:main"
 
